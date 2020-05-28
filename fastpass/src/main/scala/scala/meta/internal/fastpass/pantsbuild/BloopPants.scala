@@ -427,7 +427,7 @@ private class BloopPants(
       target: PantsTarget
   ): collection.Seq[PantsTarget] =
     (for {
-      dependency <- target.transitiveDependencies
+      dependency <- target.dependencies
       if dependency != target.name
     } yield export.targets(dependency)).toArray[PantsTarget]
 
@@ -446,33 +446,32 @@ private class BloopPants(
 
   def classpath(
       target: PantsTarget,
-      transitiveDependencies: collection.Seq[PantsTarget],
-      libraries: mutable.ArrayBuffer[PantsLibrary]
+      sourceDependenciesInClasspath: collection.Seq[PantsTarget],
+      libraries: collection.Seq[PantsLibrary]
   ): List[Path] = {
     val classpathEntries = new ju.LinkedHashSet[Path]
-    val result = mutable.ListBuffer.empty[Path]
+    // 1. Source dependencies
     for {
-      dependency <- transitiveDependencies.iterator
+      dependency <- sourceDependenciesInClasspath.iterator
     } {
-      if (dependency.isTargetRoot) {
-        val acyclicDependency = cycles.parents
-          .get(dependency.name)
-          .flatMap(export.targets.get)
-          .getOrElse(dependency)
-        classpathEntries.add(acyclicDependency.classesDir)
-      }
+      val acyclicDependency = cycles.parents
+        .get(dependency.name)
+        .flatMap(export.targets.get)
+        .getOrElse(dependency)
+      classpathEntries.add(acyclicDependency.classesDir)
     }
 
+    // 2. Library dependencies
     for {
       library <- libraries.iterator
       path <- library.nonSources
     } {
       classpathEntries.add(toImmutableJar(library, path))
     }
-    classpathEntries.addAll(allScalaJars.asJava)
     if (target.targetType.isTest) {
       classpathEntries.addAll(testingFrameworkJars.asJava)
     }
+    classpathEntries.addAll(allScalaJars.asJava)
     classpathEntries.iterator.asScala.toList
   }
 
@@ -505,12 +504,14 @@ private class BloopPants(
 
     val dependencies = getDependencies(target, transitiveDependencies)
 
-    val libraries = classpathLibraries(target, transitiveDependencies)
+    val sourceDependenciesInClasspath =
+      target.sourceDependenciesInClasspath.map(export.targets)
+    val libraries = classpathLibraries(target)
 
     val compileClasspath =
-      classpath(target, transitiveDependencies, libraries.compile)
+      classpath(target, sourceDependenciesInClasspath, libraries.compile)
     val runtimeClasspath =
-      classpath(target, transitiveDependencies, libraries.runtime)
+      classpath(target, sourceDependenciesInClasspath, libraries.runtime)
 
     val resolution = getResolution(libraries)
 
@@ -569,42 +570,28 @@ private class BloopPants(
   }
 
   case class ClasspathLibraries(
-      compile: mutable.ArrayBuffer[PantsLibrary],
-      runtime: mutable.ArrayBuffer[PantsLibrary]
+      compile: collection.Seq[PantsLibrary],
+      runtime: collection.Seq[PantsLibrary]
   )
-  def classpathLibraries(
-      target: PantsTarget,
-      transitiveDependencies: collection.Seq[PantsTarget]
-  ): ClasspathLibraries = {
+  def classpathLibraries(target: PantsTarget): ClasspathLibraries = {
     val compile = new mutable.ArrayBuffer[PantsLibrary]()
-    val isCompileVisited = new IdentityHashSet[String]
     val runtime = new mutable.ArrayBuffer[PantsLibrary]()
-    val isRuntimeVisited = new IdentityHashSet[String]
     def visit(
         out: mutable.ArrayBuffer[PantsLibrary],
-        isVisited: IdentityHashSet[String],
-        libraryNames: Seq[String]
+        libraryNames: Iterator[String]
     ): Unit = {
       for {
-        libraryName <- libraryNames.iterator
+        libraryName <- libraryNames
       } {
-        // NOTE(olafur): this
-        if (!isVisited.contains(libraryName)) {
-          isVisited.add(libraryName)
-          val library = export.librariesJava.get(libraryName)
-          // Respect "excludes" setting in Pants BUILD files to exclude library dependencies.
-          if (library != null && !target.excludes.contains(library.module)) {
-            out += library
-          }
+        val library = export.librariesJava.get(libraryName)
+        // Respect "excludes" setting in Pants BUILD files to exclude library dependencies.
+        if (library != null && !target.excludes.contains(library.module)) {
+          out += library
         }
       }
     }
-    def visitDependency(dependency: PantsTarget): Unit = {
-      visit(compile, isCompileVisited, dependency.compileLibraries)
-      visit(runtime, isRuntimeVisited, dependency.runtimeLibraries)
-    }
-    visitDependency(target)
-    transitiveDependencies.foreach(visitDependency)
+    visit(compile, target.compileLibraries.iterator)
+    visit(runtime, target.runtimeLibraries.iterator)
     ClasspathLibraries(compile, runtime)
   }
 

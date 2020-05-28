@@ -8,6 +8,7 @@ case class PantsTarget(
     name: String,
     id: String,
     dependencies: collection.Seq[String],
+    sourceDependenciesInClasspath: collection.Seq[String],
     excludes: collection.Set[String],
     platform: Option[String],
     transitiveDependencies: collection.Seq[String],

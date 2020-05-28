@@ -73,6 +73,11 @@ object PantsExport {
           Nil
         }
       val dependencies = directDependencies ++ syntheticDependencies
+      val sourceDependenciesInClasspath: Seq[String] =
+        value.get(PantsKeys.sourceDependenciesInClasspath) match {
+          case Some(value) => value.arr.map(_.str)
+          case None => Nil
+        }
       val excludes = new ju.HashSet[String]
       for {
         exclude <- value.get(PantsKeys.excludes).iterator
@@ -120,6 +125,7 @@ object PantsExport {
         name = name,
         id = id,
         dependencies = dependencies,
+        sourceDependenciesInClasspath = sourceDependenciesInClasspath,
         excludes = excludes.asScala,
         platform = platform,
         transitiveDependencies = transitiveDependencies,

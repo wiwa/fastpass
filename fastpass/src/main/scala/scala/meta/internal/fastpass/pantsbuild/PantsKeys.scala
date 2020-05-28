@@ -3,6 +3,7 @@ package scala.meta.internal.fastpass.pantsbuild
 /** Key names from the output of `./pants export` */
 object PantsKeys {
   val targets = "targets"
+  val sourceDependenciesInClasspath = "source_dependencies_in_classpath"
   val excludes = "excludes"
   val transitiveTargets = "transitive_targets"
   val libraries = "libraries"
