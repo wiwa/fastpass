@@ -154,13 +154,11 @@ object BloopPants {
       args.workspace.resolve("pants").toString(),
       "--concurrent",
       s"--no-quiet",
-      s"--${noSources}export-dep-as-jar-sources",
-      s"--${noSources}export-dep-as-jar-libraries-sources",
-      s"--export-dep-as-jar-output-file=$outputFile",
-      s"export-dep-as-jar",
-      "--respect-strict-deps"
+      s"--${noSources}export-fastpass-sources",
+      s"--export-fastpass-output-file=$outputFile",
+      s"export-fastpass"
     ) ++ args.targets
-    val shortName = "pants export-dep-as-jar"
+    val shortName = "pants export-fastpass"
     val bloopSymlink = args.workspace.resolve(".bloop")
     val bloopSymlinkTarget =
       if (Files.isSymbolicLink(bloopSymlink)) {
@@ -427,7 +425,7 @@ private class BloopPants(
       target: PantsTarget
   ): collection.Seq[PantsTarget] =
     (for {
-      dependency <- target.transitiveDependencies
+      dependency <- target.runtimeDependencies
       if dependency != target.name
     } yield export.targets(dependency)).toArray[PantsTarget]
 

@@ -10,7 +10,8 @@ case class PantsTarget(
     dependencies: collection.Seq[String],
     excludes: collection.Set[String],
     platform: Option[String],
-    transitiveDependencies: collection.Seq[String],
+    compileDependencies: collection.Seq[String],
+    runtimeDependencies: collection.Seq[String],
     compileLibraries: collection.Seq[String],
     runtimeLibraries: collection.Seq[String],
     isPantsTargetRoot: Boolean,
@@ -22,7 +23,9 @@ case class PantsTarget(
     javacOptions: List[String],
     extraJvmOptions: List[String],
     directoryName: String,
-    classesDir: Path
+    classesDir: Path,
+    strictDeps: Option[Boolean],
+    exports: List[String]
 ) {
   def isGeneratedTarget: Boolean = name.startsWith(".pants.d")
   private val prefixedId = id.stripPrefix(".")

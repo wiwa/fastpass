@@ -26,4 +26,6 @@ object PantsKeys {
   val scalacArgs = "scalac_args"
   val javacArgs = "javac_args"
   val extraJvmOptions = "extra_jvm_options"
+  val strictDeps = "strict_deps"
+  val exports = "exports"
 }

@@ -85,10 +85,7 @@ object PantsExport {
         javaHome <- jvmPlatforms.get(platform.str)
       } yield javaHome
       val transitiveDependencies: Seq[String] =
-        value.get(PantsKeys.transitiveTargets) match {
-          case None => computeTransitiveDependencies(name)
-          case Some(transitiveDepencies) => transitiveDepencies.arr.map(_.str)
-        }
+        computeTransitiveDependencies(name)
       val compileLibraries: mutable.ArrayBuffer[String] = value
         .getOrElse(PantsKeys.compileLibraries, value(PantsKeys.libraries))
         .arr
@@ -122,7 +119,8 @@ object PantsExport {
         dependencies = dependencies,
         excludes = excludes.asScala,
         platform = platform,
-        transitiveDependencies = transitiveDependencies,
+        compileDependencies = transitiveDependencies,
+        runtimeDependencies = transitiveDependencies,
         compileLibraries = compileLibraries,
         runtimeLibraries = runtimeLibraries,
         isPantsTargetRoot = isPantsTargetRoot,
@@ -134,7 +132,9 @@ object PantsExport {
         javacOptions = asStringList(value, PantsKeys.javacArgs),
         extraJvmOptions = asStringList(value, PantsKeys.extraJvmOptions),
         directoryName = directoryName,
-        classesDir = classesDir
+        classesDir = classesDir,
+        strictDeps = value.get(PantsKeys.strictDeps).map(_.bool),
+        exports = asStringList(value, PantsKeys.exports)
       )
       targets.put(name, target)
     }
@@ -181,7 +181,7 @@ object PantsExport {
   private def asStringList(obj: Obj, key: String): List[String] =
     obj.value.get(key) match {
       case None => Nil
-      case Some(value) => value.arr.map(_.str).toList
+      case Some(value) => value.arr.iterator.map(_.str).toList
     }
 
 }
