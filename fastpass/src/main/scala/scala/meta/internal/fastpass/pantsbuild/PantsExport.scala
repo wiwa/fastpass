@@ -84,8 +84,27 @@ object PantsExport {
         platform <- value.get(PantsKeys.platform)
         javaHome <- jvmPlatforms.get(platform.str)
       } yield javaHome
+
       val transitiveDependencies: Seq[String] =
         computeTransitiveDependencies(name)
+
+      val compileDependencies =
+        if (value.getOrElse(PantsKeys.strictDeps, ujson.False).bool) {
+          val exportsOfDirectDependencies =
+            for {
+              dep <- dependencies
+              transitiveDep <- allTargets(dep).obj
+                .getOrElse(PantsKeys.exports, ujson.Arr())
+                .arr
+                .map(_.str)
+            } yield {
+              transitiveDep
+            }
+          directDependencies ++ exportsOfDirectDependencies
+        } else {
+          transitiveDependencies
+        }
+
       val compileLibraries: mutable.ArrayBuffer[String] = value
         .getOrElse(PantsKeys.compileLibraries, value(PantsKeys.libraries))
         .arr
@@ -119,7 +138,7 @@ object PantsExport {
         dependencies = dependencies,
         excludes = excludes.asScala,
         platform = platform,
-        compileDependencies = transitiveDependencies,
+        compileDependencies = compileDependencies,
         runtimeDependencies = transitiveDependencies,
         compileLibraries = compileLibraries,
         runtimeLibraries = runtimeLibraries,
